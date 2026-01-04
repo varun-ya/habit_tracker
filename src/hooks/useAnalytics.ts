@@ -9,8 +9,13 @@ export interface AnalyticsData {
   currentStreak: number
   completionRate: number
   weeklyData: Array<{
+    week: string
+    percentage: number
+    completions: number
+  }>
+  dailyData: Array<{
     date: string
-    completed: number
+    completions: number
     total: number
   }>
   habitStats: Array<{

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { HabitWithLogs } from '@/types/habit'
 import { apiClient } from '@/lib/api-client'
+import { CreateHabitInput } from '../../lib/validations/habit'
 
 interface UseHabitsReturn {
   habits: HabitWithLogs[]
@@ -10,6 +11,7 @@ interface UseHabitsReturn {
   error: string | null
   refetch: () => Promise<void>
   toggleHabitLog: (habitId: string, date: string) => Promise<void>
+  createHabit: (data: CreateHabitInput) => Promise<void>
   isUpdating: boolean
 }
 
@@ -21,11 +23,14 @@ export function useHabits(): UseHabitsReturn {
 
   const fetchHabits = useCallback(async () => {
     try {
+      console.log('Fetching habits...')
       setLoading(true)
       setError(null)
       const data = await apiClient.getHabits()
+      console.log('Habits fetched:', data)
       setHabits(data)
     } catch (err) {
+      console.error('Error fetching habits:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch habits')
     } finally {
       setLoading(false)
@@ -93,6 +98,19 @@ export function useHabits(): UseHabitsReturn {
     }
   }, [])
 
+  const createHabit = useCallback(async (data: CreateHabitInput) => {
+    try {
+      setIsUpdating(true)
+      await apiClient.createHabit(data)
+      await fetchHabits()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create habit')
+      throw err
+    } finally {
+      setIsUpdating(false)
+    }
+  }, [fetchHabits])
+
   useEffect(() => {
     fetchHabits()
   }, [fetchHabits])
@@ -103,6 +121,7 @@ export function useHabits(): UseHabitsReturn {
     error,
     refetch: fetchHabits,
     toggleHabitLog,
+    createHabit,
     isUpdating
-  }), [habits, loading, error, fetchHabits, toggleHabitLog, isUpdating])
+  }), [habits, loading, error, fetchHabits, toggleHabitLog, createHabit, isUpdating])
 }

@@ -1,31 +1,48 @@
 import { prisma } from '@/lib/prisma';
 import { Habit, HabitLog } from '@prisma/client';
-import { CreateHabitInput, UpdateHabitInput } from '@/lib/validations/habit';
+import { CreateHabitInput, UpdateHabitInput } from '../validations/habit';
 
 export class HabitService {
-  static async createHabit(userId: string, data: CreateHabitInput): Promise<Habit> {
+  static async createHabit(userEmail: string, data: CreateHabitInput): Promise<Habit> {
+    // Find or create user
+    let user = await prisma.user.findUnique({ where: { email: userEmail } })
+    if (!user) {
+      user = await prisma.user.create({
+        data: { email: userEmail, name: userEmail.split('@')[0] }
+      })
+    }
+
     return prisma.habit.create({
       data: {
         ...data,
-        userId,
+        userId: user.id,
       },
     });
   }
 
-  static async getUserHabits(userId: string): Promise<Habit[]> {
+  static async getUserHabits(userEmail: string): Promise<Habit[]> {
+    const user = await prisma.user.findUnique({ where: { email: userEmail } })
+    if (!user) return []
+    
     return prisma.habit.findMany({
-      where: { userId },
+      where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  static async getHabitById(id: string, userId: string): Promise<Habit | null> {
+  static async getHabitById(id: string, userEmail: string): Promise<Habit | null> {
+    const user = await prisma.user.findUnique({ where: { email: userEmail } })
+    if (!user) return null
+    
     return prisma.habit.findFirst({
-      where: { id, userId },
+      where: { id, userId: user.id },
     });
   }
 
-  static async updateHabit(id: string, userId: string, data: UpdateHabitInput): Promise<Habit> {
+  static async updateHabit(id: string, userEmail: string, data: UpdateHabitInput): Promise<Habit> {
+    const user = await prisma.user.findUnique({ where: { email: userEmail } })
+    if (!user) throw new Error('User not found')
+    
     return prisma.habit.update({
       where: { id },
       data: {
@@ -35,15 +52,21 @@ export class HabitService {
     });
   }
 
-  static async deleteHabit(id: string, userId: string): Promise<void> {
+  static async deleteHabit(id: string, userEmail: string): Promise<void> {
+    const user = await prisma.user.findUnique({ where: { email: userEmail } })
+    if (!user) throw new Error('User not found')
+    
     await prisma.habit.delete({
       where: { id },
     });
   }
 
-  static async getHabitWithLogs(id: string, userId: string) {
+  static async getHabitWithLogs(id: string, userEmail: string) {
+    const user = await prisma.user.findUnique({ where: { email: userEmail } })
+    if (!user) return null
+    
     return prisma.habit.findFirst({
-      where: { id, userId },
+      where: { id, userId: user.id },
       include: {
         logs: {
           orderBy: { date: 'desc' },

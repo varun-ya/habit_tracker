@@ -1,14 +1,40 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import HabitList from './habit-list'
 import HabitTable from './habit-table'
 import AnalyticsPanel from './analytics-panel'
+import HabitForm from '@/components/habits/HabitForm'
 import { useHabits } from '@/hooks/useHabits'
 import { HabitListSkeleton, HabitTableSkeleton, AnalyticsSkeleton } from '@/components/ui/skeleton'
+import { CreateHabitInput } from '../../../lib/validations/habit'
 
 const Dashboard = memo(() => {
-  const { habits, loading } = useHabits()
+  const { habits, loading, createHabit } = useHabits()
+  const [showAddHabit, setShowAddHabit] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleAddHabit = () => {
+    setShowAddHabit(true)
+  }
+
+  const handleSubmitHabit = async (data: CreateHabitInput) => {
+    try {
+      console.log('Submitting habit:', data)
+      setIsSubmitting(true)
+      await createHabit(data)
+      setShowAddHabit(false)
+      console.log('Habit created successfully')
+    } catch (error) {
+      console.error('Failed to create habit:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCancelHabit = () => {
+    setShowAddHabit(false)
+  }
 
   if (loading) {
     return (
@@ -53,11 +79,23 @@ const Dashboard = memo(() => {
           <p className="text-gray-600 mt-1">Track your daily habits and build better routines</p>
         </header>
         
+        {/* Add Habit Form Modal */}
+        {showAddHabit && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="max-w-md w-full">
+              <HabitForm
+                onSubmit={handleSubmitHabit}
+                onCancel={handleCancelHabit}
+              />
+            </div>
+          </div>
+        )}
+        
         {/* Mobile: Stack vertically */}
         <div className="block lg:hidden space-y-6">
-          <HabitTable habits={habits} />
+          <HabitTable habits={habits} onAddHabit={handleAddHabit} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <HabitList />
+            <HabitList habits={habits} onAddHabit={handleAddHabit} />
             <AnalyticsPanel />
           </div>
         </div>
@@ -66,12 +104,12 @@ const Dashboard = memo(() => {
         <div className="hidden lg:grid lg:grid-cols-12 gap-6">
           {/* Left: Habit List */}
           <div className="lg:col-span-3">
-            <HabitList />
+            <HabitList habits={habits} onAddHabit={handleAddHabit} />
           </div>
           
           {/* Center: Habit Table */}
           <div className="lg:col-span-6">
-            <HabitTable habits={habits} />
+            <HabitTable habits={habits} onAddHabit={handleAddHabit} />
           </div>
           
           {/* Right: Analytics Panel */}

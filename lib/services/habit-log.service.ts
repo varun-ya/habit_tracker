@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { HabitLog } from '@prisma/client';
-import { CreateHabitLogInput, UpdateHabitLogInput } from '@/lib/validations/habit-log';
+import { CreateHabitLogInput, UpdateHabitLogInput } from '../validations/habit-log';
 
 export class HabitLogService {
   static async logHabit(userId: string, data: CreateHabitLogInput): Promise<HabitLog> {
@@ -62,21 +62,41 @@ export class HabitLogService {
     });
   }
 
-  static async getHabitLogs(habitId: string, userId: string, limit = 30): Promise<HabitLog[]> {
-    // Verify habit belongs to user
-    const habit = await prisma.habit.findFirst({
-      where: { id: habitId, userId },
-    });
+  static async toggleHabitLog(habitId: string, date: string): Promise<HabitLog> {
+    const dateObj = new Date(date)
+    
+    // Check if log already exists
+    const existingLog = await prisma.habitLog.findFirst({
+      where: {
+        habitId,
+        date: dateObj,
+      },
+    })
 
-    if (!habit) {
-      throw new Error('Habit not found');
+    if (existingLog) {
+      // Toggle the completed status
+      return prisma.habitLog.update({
+        where: { id: existingLog.id },
+        data: { completed: !existingLog.completed },
+      })
+    } else {
+      // Create new log
+      return prisma.habitLog.create({
+        data: {
+          habitId,
+          date: dateObj,
+          completed: true,
+        },
+      })
     }
+  }
 
+  static async getHabitLogs(habitId: string, limit = 30): Promise<HabitLog[]> {
     return prisma.habitLog.findMany({
       where: { habitId },
       orderBy: { date: 'desc' },
       take: limit,
-    });
+    })
   }
 
   static async getLogByDate(habitId: string, date: Date, userId: string): Promise<HabitLog | null> {
