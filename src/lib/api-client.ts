@@ -4,64 +4,48 @@ import { HabitWithLogs } from '@/types/habit'
 
 class ApiClient {
   private cache = new Map<string, { data: any; timestamp: number }>()
-  private pendingRequests = new Map<string, Promise<any>>()
   private readonly CACHE_TTL = 30000 // 30 seconds
-
-  private getCacheKey(url: string, options?: RequestInit): string {
-    return `${url}:${JSON.stringify(options)}`
-  }
 
   private isValidCache(timestamp: number): boolean {
     return Date.now() - timestamp < this.CACHE_TTL
   }
 
   private async request<T>(url: string, options?: RequestInit): Promise<T> {
-    const cacheKey = this.getCacheKey(url, options)
+    const cacheKey = `${url}:${options?.method || 'GET'}`
     
-    // Return cached data if valid
-    if (options?.method === 'GET' || !options?.method) {
+    // Return cached data if valid for GET requests
+    if (!options?.method || options.method === 'GET') {
       const cached = this.cache.get(cacheKey)
       if (cached && this.isValidCache(cached.timestamp)) {
         return cached.data
       }
     }
 
-    // Deduplicate concurrent requests
-    if (this.pendingRequests.has(cacheKey)) {
-      return this.pendingRequests.get(cacheKey)!
-    }
-
-    const requestPromise = this.executeRequest<T>(url, options)
-    this.pendingRequests.set(cacheKey, requestPromise)
-
     try {
-      const data = await requestPromise
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+        ...options,
+      })
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
       
       // Cache GET requests
-      if (options?.method === 'GET' || !options?.method) {
+      if (!options?.method || options.method === 'GET') {
         this.cache.set(cacheKey, { data, timestamp: Date.now() })
       }
       
       return data
-    } finally {
-      this.pendingRequests.delete(cacheKey)
+    } catch (error) {
+      console.error('API request failed:', error)
+      throw error
     }
-  }
-
-  private async executeRequest<T>(url: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    })
-
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`)
-    }
-
-    return response.json()
   }
 
   invalidateCache(pattern?: string) {
