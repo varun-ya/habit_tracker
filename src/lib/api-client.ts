@@ -4,7 +4,7 @@ import { HabitWithLogs } from '@/types/habit'
 
 class ApiClient {
   private cache = new Map<string, { data: any; timestamp: number }>()
-  private readonly CACHE_TTL = 30000 // 30 seconds
+  private readonly CACHE_TTL = 60000 // 1 minute
 
   private isValidCache(timestamp: number): boolean {
     return Date.now() - timestamp < this.CACHE_TTL
@@ -31,19 +31,20 @@ class ApiClient {
       })
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`)
+        const errorText = await response.text()
+        throw new Error(`API Error: ${response.status} - ${errorText}`)
       }
 
       const data = await response.json()
       
-      // Cache GET requests
+      // Cache GET requests only
       if (!options?.method || options.method === 'GET') {
         this.cache.set(cacheKey, { data, timestamp: Date.now() })
       }
       
       return data
     } catch (error) {
-      console.error('API request failed:', error)
+      console.error('API request failed:', { url, error })
       throw error
     }
   }
