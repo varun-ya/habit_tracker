@@ -1,47 +1,43 @@
-import { db } from '@/lib/db'
-import { habitLogs } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { prisma } from '@/lib/prisma'
 
 export class HabitLogService {
-  async toggleHabitLog(habitId: string, date: string) {
-    const existingLog = await db
-      .select()
-      .from(habitLogs)
-      .where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.date, date)))
-      .limit(1)
+  static async toggleHabitLog(habitId: string, date: string) {
+    const dateObj = new Date(date)
+    
+    const existingLog = await prisma.habitLog.findFirst({
+      where: { 
+        habitId, 
+        date: {
+          gte: new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()),
+          lt: new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate() + 1)
+        }
+      }
+    })
 
-    if (existingLog.length > 0) {
-      await db
-        .delete(habitLogs)
-        .where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.date, date)))
-      
+    if (existingLog) {
+      await prisma.habitLog.delete({
+        where: { id: existingLog.id }
+      })
       return { action: 'removed', date }
     } else {
-      const [log] = await db
-        .insert(habitLogs)
-        .values({ habitId, date })
-        .returning()
-      
+      const log = await prisma.habitLog.create({
+        data: { 
+          habitId, 
+          date: dateObj,
+          completed: true
+        }
+      })
       return { action: 'added', date, log }
     }
   }
 
-  async getHabitLogs(habitId: string) {
-    return db.select().from(habitLogs).where(eq(habitLogs.habitId, habitId))
-  }
-
-  async getLogsInDateRange(habitId: string, startDate: string, endDate: string) {
-    return db
-      .select()
-      .from(habitLogs)
-      .where(
-        and(
-          eq(habitLogs.habitId, habitId),
-          eq(habitLogs.date, startDate), // This should use gte/lte for range
-          eq(habitLogs.date, endDate)
-        )
-      )
+  static async getHabitLogs(habitId: string) {
+    return prisma.habitLog.findMany({
+      where: { habitId }
+    })
   }
 }
+
+export const habitLogService = new HabitLogService()
 
 export const habitLogService = new HabitLogService()

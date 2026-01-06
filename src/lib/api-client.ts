@@ -31,8 +31,14 @@ class ApiClient {
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`API Error: ${response.status} - ${errorText}`)
+        let errorMessage = `HTTP ${response.status}`
+        try {
+          const errorText = await response.text()
+          errorMessage = errorText || errorMessage
+        } catch {
+          // Ignore error parsing response
+        }
+        throw new Error(`API Error: ${errorMessage}`)
       }
 
       const data = await response.json()
@@ -45,7 +51,7 @@ class ApiClient {
       return data
     } catch (error) {
       console.error('API request failed:', { url, error })
-      throw error
+      throw error instanceof Error ? error : new Error('Unknown API error')
     }
   }
 

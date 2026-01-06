@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { HabitService } from '../../../../lib/services/habit.service'
-import { HabitLogService } from '../../../../lib/services/habit-log.service'
+import { HabitService, HabitLogService } from '@/lib/services'
 import { createHabitSchema } from '../../../../lib/validations/habit'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'

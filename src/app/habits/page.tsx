@@ -5,74 +5,65 @@ import { Plus } from 'lucide-react';
 import HabitForm from '@/components/habits/HabitForm';
 import HabitItem from '@/components/habits/HabitItem';
 import { type CreateHabitInput } from '@/lib/validations/habit';
-
-interface Habit {
-  id: string;
-  habitName: string;
-  frequency: string;
-  streak: number;
-  completedToday: boolean;
-  lastCompleted: string | null;
-}
+import { apiClient } from '@/lib/api-client';
+import { HabitWithLogs } from '@/types/habit';
 
 export default function HabitsPage() {
-  const [habits, setHabits] = useState<Habit[]>([]);
+  const [habits, setHabits] = useState<HabitWithLogs[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem('habits');
-    if (saved) {
-      setHabits(JSON.parse(saved));
-    }
+    loadHabits();
   }, []);
 
-  const saveHabits = (updatedHabits: Habit[]) => {
-    setHabits(updatedHabits);
-    localStorage.setItem('habits', JSON.stringify(updatedHabits));
+  const loadHabits = async () => {
+    try {
+      const data = await apiClient.getHabits();
+      setHabits(data);
+    } catch (error) {
+      console.error('Failed to load habits:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const addHabit = (data: CreateHabitInput) => {
-    const habit: Habit = {
-      id: Date.now().toString(),
-      habitName: data.habitName,
-      frequency: data.frequency,
-      streak: 0,
-      completedToday: false,
-      lastCompleted: null
-    };
-    
-    saveHabits([...habits, habit]);
-    setIsAdding(false);
+  const addHabit = async (data: CreateHabitInput) => {
+    try {
+      await apiClient.createHabit(data);
+      await loadHabits();
+      setIsAdding(false);
+    } catch (error) {
+      console.error('Failed to create habit:', error);
+    }
   };
 
-  const editHabit = (id: string, data: CreateHabitInput) => {
-    const updatedHabits = habits.map(habit => 
-      habit.id === id 
-        ? { ...habit, habitName: data.habitName, frequency: data.frequency }
-        : habit
-    );
-    saveHabits(updatedHabits);
+  const editHabit = async (id: string, data: CreateHabitInput) => {
+    try {
+      await apiClient.updateHabit(id, data);
+      await loadHabits();
+    } catch (error) {
+      console.error('Failed to update habit:', error);
+    }
   };
 
-  const deleteHabit = (id: string) => {
-    saveHabits(habits.filter(habit => habit.id !== id));
+  const deleteHabit = async (id: string) => {
+    try {
+      await apiClient.deleteHabit(id);
+      await loadHabits();
+    } catch (error) {
+      console.error('Failed to delete habit:', error);
+    }
   };
 
-  const toggleHabit = (id: string) => {
-    const today = new Date().toDateString();
-    const updatedHabits = habits.map(habit => {
-      if (habit.id === id) {
-        const wasCompletedToday = habit.lastCompleted === today;
-        return {
-          ...habit,
-          completedToday: !wasCompletedToday,
-          lastCompleted: wasCompletedToday ? null : today,
-          streak: wasCompletedToday ? Math.max(0, habit.streak - 1) : habit.streak + 1
-        };
-      }
-      return habit;
-    });
-    saveHabits(updatedHabits);
+  const toggleHabit = async (id: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await apiClient.toggleHabitLog(id, today);
+      await loadHabits();
+    } catch (error) {
+      console.error('Failed to toggle habit:', error);
+    }
   };
 
   return (
@@ -97,22 +88,30 @@ export default function HabitsPage() {
         </div>
       )}
 
-      <div className="grid gap-4">
-        {habits.map(habit => (
-          <HabitItem
-            key={habit.id}
-            habit={habit}
-            onEdit={editHabit}
-            onDelete={deleteHabit}
-            onToggle={toggleHabit}
-          />
-        ))}
-      </div>
-
-      {habits.length === 0 && !isAdding && (
-        <div className="text-center py-12 text-gray-500">
-          <p>No habits yet. Add your first habit to get started!</p>
+      {loading ? (
+        <div className="text-center py-12">
+          <p>Loading habits...</p>
         </div>
+      ) : (
+        <>
+          <div className="grid gap-4">
+            {habits.map(habit => (
+              <HabitItem
+                key={habit.id}
+                habit={habit}
+                onEdit={editHabit}
+                onDelete={deleteHabit}
+                onToggle={toggleHabit}
+              />
+            ))}
+          </div>
+
+          {habits.length === 0 && !isAdding && (
+            <div className="text-center py-12 text-gray-500">
+              <p>No habits yet. Add your first habit to get started!</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

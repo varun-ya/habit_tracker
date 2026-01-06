@@ -1,51 +1,46 @@
-import { db } from '@/lib/db'
-import { habits, habitLogs } from '@/lib/db/schema'
-import { eq, and, gte, lte, desc } from 'drizzle-orm'
+import { prisma } from '@/lib/prisma'
 import { HabitWithLogs } from '@/types/habit'
 
 export class HabitService {
-  async getHabits(): Promise<HabitWithLogs[]> {
-    const habitsData = await db.select().from(habits).orderBy(desc(habits.createdAt))
+  static async getUserHabits(userEmail: string): Promise<HabitWithLogs[]> {
+    const user = await prisma.user.findUnique({ where: { email: userEmail } })
+    if (!user) return []
     
-    const habitsWithLogs = await Promise.all(
-      habitsData.map(async (habit) => {
-        const logs = await db
-          .select()
-          .from(habitLogs)
-          .where(eq(habitLogs.habitId, habit.id))
-          .orderBy(desc(habitLogs.date))
-        
-        return { ...habit, logs }
-      })
-    )
-    
-    return habitsWithLogs
+    const habits = await prisma.habit.findMany({
+      where: { userId: user.id },
+      include: { logs: true },
+      orderBy: { createdAt: 'desc' }
+    })
+    return habits
   }
 
-  async createHabit(data: { name: string; description?: string; color: string; frequency: string }) {
-    const [habit] = await db.insert(habits).values(data).returning()
-    return habit
-  }
-
-  async updateHabit(id: string, data: Partial<{ name: string; description?: string; color: string; frequency: string }>) {
-    const [habit] = await db
-      .update(habits)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(habits.id, id))
-      .returning()
+  static async createHabit(userEmail: string, data: { habitName: string; frequency: string }) {
+    const user = await prisma.user.upsert({
+      where: { email: userEmail },
+      create: { email: userEmail },
+      update: {}
+    })
     
-    return habit
+    return await prisma.habit.create({
+      data: {
+        habitName: data.habitName,
+        frequency: data.frequency,
+        userId: user.id
+      }
+    })
   }
 
-  async deleteHabit(id: string) {
-    await db.delete(habitLogs).where(eq(habitLogs.habitId, id))
-    await db.delete(habits).where(eq(habits.id, id))
+  static async updateHabit(id: string, data: { habitName: string; frequency: string }) {
+    return await prisma.habit.update({
+      where: { id },
+      data
+    })
+  }
+
+  static async deleteHabit(id: string) {
+    await prisma.habitLog.deleteMany({ where: { habitId: id } })
+    await prisma.habit.delete({ where: { id } })
     return { success: true }
-  }
-
-  async getHabitById(id: string) {
-    const [habit] = await db.select().from(habits).where(eq(habits.id, id))
-    return habit
   }
 }
 
