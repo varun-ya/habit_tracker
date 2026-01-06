@@ -123,6 +123,15 @@ class ApiClient {
     const url = `/api/analytics${searchParams.toString() ? `?${searchParams}` : ''}`
     return this.request(url)
   }
+
+  // Cache management
+  clearAllCache() {
+    this.cache.clear()
+  }
+
+  getCacheSize() {
+    return this.cache.size
+  }
 }
 
 export const apiClient = new ApiClient()
