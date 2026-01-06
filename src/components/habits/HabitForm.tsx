@@ -38,14 +38,15 @@ export default function HabitForm({ onSubmit, onCancel, defaultValues, isEditing
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
         <div>
           <label htmlFor="habitName" className="block text-sm font-medium text-gray-700 mb-1">
-            Habit Name
+            Habit Name *
           </label>
           <input
             {...register('habitName')}
             type="text"
             id="habitName"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Enter habit name..."
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+            placeholder="e.g., Drink 8 glasses of water"
+            autoFocus
           />
           {errors.habitName && (
             <p className="text-red-500 text-sm mt-1">{errors.habitName.message}</p>
