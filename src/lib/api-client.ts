@@ -4,7 +4,7 @@ import { HabitWithLogs } from '@/types/habit'
 
 class ApiClient {
   private cache = new Map<string, { data: any; timestamp: number }>()
-  private readonly CACHE_TTL = 60000 // 1 minute
+  private readonly CACHE_TTL = 300000 // 5 minutes
 
   private isValidCache(timestamp: number): boolean {
     return Date.now() - timestamp < this.CACHE_TTL
