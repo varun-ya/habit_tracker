@@ -74,13 +74,20 @@ export class HabitLogService {
     })
 
     if (existingLog) {
-      // Toggle the completed status
-      return prisma.habitLog.update({
-        where: { id: existingLog.id },
-        data: { completed: !existingLog.completed },
-      })
+      // If completed, delete the log; if not completed, mark as completed
+      if (existingLog.completed) {
+        await prisma.habitLog.delete({
+          where: { id: existingLog.id },
+        })
+        return { ...existingLog, completed: false }
+      } else {
+        return prisma.habitLog.update({
+          where: { id: existingLog.id },
+          data: { completed: true },
+        })
+      }
     } else {
-      // Create new log
+      // Create new log as completed
       return prisma.habitLog.create({
         data: {
           habitId,
