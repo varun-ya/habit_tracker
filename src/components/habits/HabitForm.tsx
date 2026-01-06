@@ -2,7 +2,7 @@
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createHabitSchema, type CreateHabitInput } from '../../../lib/validations/habit';
+import { createHabitSchema, type CreateHabitInput } from '@/lib/validations/habit';
 
 interface HabitFormProps {
   onSubmit: (data: CreateHabitInput) => void;
@@ -21,13 +21,21 @@ export default function HabitForm({ onSubmit, onCancel, defaultValues, isEditing
     defaultValues: defaultValues || { habitName: '', frequency: 'daily' }
   });
 
+  const handleFormSubmit = async (data: CreateHabitInput) => {
+    try {
+      await onSubmit(data);
+    } catch (error) {
+      console.error('Form submission error:', error);
+    }
+  };
+
   return (
     <div className="bg-white p-6 rounded-lg shadow border">
       <h3 className="text-lg font-semibold mb-4">
         {isEditing ? 'Edit Habit' : 'Create New Habit'}
       </h3>
       
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
         <div>
           <label htmlFor="habitName" className="block text-sm font-medium text-gray-700 mb-1">
             Habit Name

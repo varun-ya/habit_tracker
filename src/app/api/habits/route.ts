@@ -7,13 +7,32 @@ import { authOptions } from '@/lib/auth'
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // For development, use a default user email if no session
+    let userEmail = 'demo@example.com'
+    
+    try {
+      const session = await getServerSession(authOptions)
+      if (session?.user?.email) {
+        userEmail = session.user.email
+      }
+    } catch (error) {
+      console.log('No session found, using demo user')
     }
 
-    // For now, just return empty array to get the dashboard working
-    return NextResponse.json([])
+    const habits = await HabitService.getUserHabits(userEmail)
+    
+    // Get habits with their logs
+    const habitsWithLogs = await Promise.all(
+      habits.map(async (habit) => {
+        const logs = await HabitLogService.getHabitLogs(habit.id)
+        return {
+          ...habit,
+          logs
+        }
+      })
+    )
+    
+    return NextResponse.json(habitsWithLogs)
   } catch (error) {
     console.error('Habits API error:', error)
     return NextResponse.json(
@@ -25,25 +44,34 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // For development, use a default user email if no session
+    let userEmail = 'demo@example.com'
+    
+    try {
+      const session = await getServerSession(authOptions)
+      if (session?.user?.email) {
+        userEmail = session.user.email
+      }
+    } catch (error) {
+      console.log('No session found, using demo user')
     }
 
     const body = await request.json()
     console.log('Creating habit with data:', body)
     
-    // For now, just return a mock habit to get the form working
-    const mockHabit = {
-      id: `habit-${Date.now()}`,
-      habitName: body.habitName,
-      frequency: body.frequency,
-      userId: session.user.email,
-      createdAt: new Date(),
+    // Validate the input
+    const validatedData = createHabitSchema.parse(body)
+    
+    // Create the habit using the service
+    const habit = await HabitService.createHabit(userEmail, validatedData)
+    
+    // Return habit with empty logs array
+    const habitWithLogs = {
+      ...habit,
       logs: []
     }
     
-    return NextResponse.json(mockHabit)
+    return NextResponse.json(habitWithLogs)
   } catch (error) {
     console.error('Create habit error:', error)
     return NextResponse.json(

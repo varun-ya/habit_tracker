@@ -6,9 +6,16 @@ import { authOptions } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // For development, use a default user email if no session
+    let userEmail = 'demo@example.com'
+    
+    try {
+      const session = await getServerSession(authOptions)
+      if (session?.user?.email) {
+        userEmail = session.user.email
+      }
+    } catch (error) {
+      console.log('No session found, using demo user')
     }
 
     const { searchParams } = new URL(request.url)
@@ -19,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify habit belongs to user
-    const habit = await HabitService.getHabitById(habitId, session.user.email)
+    const habit = await HabitService.getHabitById(habitId, userEmail)
     if (!habit) {
       return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
     }
@@ -37,9 +44,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // For development, use a default user email if no session
+    let userEmail = 'demo@example.com'
+    
+    try {
+      const session = await getServerSession(authOptions)
+      if (session?.user?.email) {
+        userEmail = session.user.email
+      }
+    } catch (error) {
+      console.log('No session found, using demo user')
     }
 
     const { habitId, date } = await request.json()
@@ -52,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify habit belongs to user
-    const habit = await HabitService.getHabitById(habitId, session.user.email)
+    const habit = await HabitService.getHabitById(habitId, userEmail)
     if (!habit) {
       return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
     }
