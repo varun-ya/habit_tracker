@@ -52,13 +52,18 @@ export class HabitService {
     });
   }
 
-  static async deleteHabit(id: string, userEmail: string): Promise<void> {
+  static async deleteHabit(id: string, userEmail: string): Promise<boolean> {
     const user = await prisma.user.findUnique({ where: { email: userEmail } })
-    if (!user) throw new Error('User not found')
+    if (!user) return false
     
-    await prisma.habit.delete({
-      where: { id },
-    });
+    try {
+      await prisma.habit.delete({
+        where: { id },
+      });
+      return true
+    } catch {
+      return false
+    }
   }
 
   static async getHabitWithLogs(id: string, userEmail: string) {
